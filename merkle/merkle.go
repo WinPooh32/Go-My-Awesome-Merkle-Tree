@@ -5,23 +5,6 @@ import (
 	"strconv"
 )
 
-type node struct {
-	parent *node
-	left   *node
-	right  *node
-
-	hashInfo string
-	data     []byte
-}
-
-func (n *node) isLeaf() bool {
-	return n.left == nil && n.right == nil
-}
-
-func (n *node) equals(right *node) bool {
-	return n.hashInfo == right.hashInfo
-}
-
 type Tree struct {
 	root     *node
 	leaves   []*node
@@ -104,6 +87,45 @@ func (t *Tree) Insert(datas [][]byte) {
 	t.data = append(t.data, datas...)
 	t.leaves = t.makeLeaves()
 	t.build(t.leaves)
+}
+
+func (t *Tree) AuditProof(leafHash string) []AuditNode {
+	auditTrail := make([]AuditNode, 0, 4)
+
+	if leaf := t.findLeaf(leafHash); leaf != nil {
+		if leaf.parent == nil {
+			panic("Expected leaf to have a parent.")
+		}
+		parent := leaf.parent
+		t.buildAuditTrail(&auditTrail, parent, leaf)
+	}
+
+	return auditTrail
+}
+
+func (t *Tree) buildAuditTrail(auditTrail *[]AuditNode, parent *node, child *node) {
+	if parent != nil {
+		if !parent.equals(child.parent) {
+			panic("Parent of child is not expected parent.")
+		}
+
+		var nextChild *node
+		var branch Direction
+
+		if child.equals(parent.left) {
+			nextChild = parent.right
+			branch = left
+		} else {
+			nextChild = parent.left
+			branch = right
+		}
+
+		if nextChild != nil {
+			*auditTrail = append(*auditTrail, *makeAuditNode(nextChild.hashInfo, branch))
+		}
+
+		t.buildAuditTrail(auditTrail, child.parent.parent, child.parent)
+	}
 }
 
 func (t *Tree) findLeaf(hash string) *node {
