@@ -20,6 +20,7 @@ func (n *node) isLeaf() bool {
 
 type Tree struct {
 	root     *node
+	leaves   []*node
 	data     [][]byte
 	hashFunc func([]byte) string
 }
@@ -97,8 +98,17 @@ func (t *Tree) Hash() string {
 
 func (t *Tree) Insert(datas [][]byte) {
 	t.data = append(t.data, datas...)
-	leaves := t.makeLeaves()
-	t.build(leaves)
+	t.leaves = t.makeLeaves()
+	t.build(t.leaves)
+}
+
+func (t *Tree) findLeaf(hash string) *node {
+	for _, v := range t.leaves {
+		if v.hashInfo == hash {
+			return v
+		}
+	}
+	return nil
 }
 
 func (t *Tree) build(nodes []*node) {
