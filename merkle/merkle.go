@@ -160,3 +160,22 @@ func (t *Tree) build(nodes []*node) {
 		t.build(parents)
 	}
 }
+
+func (t *Tree) VerifyAudit(auditTrail []AuditNode, leafHash string) bool {
+	if len(auditTrail) == 0 {
+		panic("Audit trail cannot be empty.")
+	}
+
+	testHash := leafHash
+
+	for _, v := range auditTrail {
+		switch v.branch {
+		case left:
+			testHash = t.hashFunc([]byte(testHash + v.hashInfo))
+		case right:
+			testHash = t.hashFunc([]byte(v.hashInfo + testHash))
+		}
+	}
+
+	return t.root.hashInfo == testHash
+}
