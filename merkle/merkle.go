@@ -18,6 +18,10 @@ func (n *node) isLeaf() bool {
 	return n.left == nil && n.right == nil
 }
 
+func (n *node) equals(right *node) bool {
+	return n.hashInfo == right.hashInfo
+}
+
 type Tree struct {
 	root     *node
 	leaves   []*node
