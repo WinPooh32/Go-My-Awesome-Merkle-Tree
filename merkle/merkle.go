@@ -18,6 +18,9 @@ func MakeTree(hasher func([]byte) string) *Tree {
 }
 
 func (t *Tree) makeLeafNode(data []byte) *node {
+	if data == nil {
+		panic("Data can'not be nil!")
+	}
 	n := node{hashInfo: t.hashFunc(data), data: data}
 	return &n
 }
