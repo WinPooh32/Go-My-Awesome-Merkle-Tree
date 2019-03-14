@@ -1,7 +1,5 @@
 package merkle
 
-import "fmt"
-
 type Direction int
 
 const (
@@ -16,9 +14,6 @@ type AuditNode struct {
 }
 
 func makeAuditNode(hash string, branch Direction) *AuditNode {
-	if branch < left || branch > oldRoot {
-		panic(fmt.Sprintf("Value %d is out of Direction type range", branch))
-	}
 	a := AuditNode{hashInfo: hash, branch: branch}
 	return &a
 }

@@ -17,37 +17,41 @@ func MakeTree(hasher func([]byte) string) *Tree {
 	return &t
 }
 
-func (t *Tree) makeLeafNode(data []byte) *node {
+func (t *Tree) makeLeafNode(data []byte) (*node, error) {
 	if data == nil {
-		panic("Data can'not be nil!")
+		return nil, fmt.Errorf("data can't be a nil")
 	}
 	n := node{hashInfo: t.hashFunc(data), data: data}
-	return &n
+	return &n, nil
 }
 
-func (t *Tree) makeLeaves() []*node {
+func (t *Tree) makeLeaves() ([]*node, error) {
 	nodes := make([]*node, 0, 4)
 
 	for _, v := range t.data {
-		nodes = append(nodes, t.makeLeafNode(v))
+		n, err := t.makeLeafNode(v)
+		if err != nil {
+			return nil, err
+		}
+
+		nodes = append(nodes, n)
 	}
 
-	return nodes
+	return nodes, nil
 }
 
-func (t *Tree) makeNode(left, right *node) *node {
+func (t *Tree) makeNode(left, right *node) (*node, error) {
 	if left == nil && right == nil {
-		panic("At least one node should not be a nil!")
+		return nil, fmt.Errorf("at least one node should not be a nil")
 	}
 
 	var hash string
 	n := node{}
 
-	switch {
-	case right == nil:
+	if right == nil {
 		hash = left.hashInfo
 		left.parent = &n
-	default:
+	} else {
 		left.parent = &n
 		right.parent = &n
 		hash = left.hashInfo + right.hashInfo
@@ -57,7 +61,7 @@ func (t *Tree) makeNode(left, right *node) *node {
 	n.left = left
 	n.right = right
 
-	return &n
+	return &n, nil
 }
 
 func (t *Tree) print(root *node, indent int, line string) {
@@ -86,30 +90,43 @@ func (t *Tree) Hash() string {
 	return t.root.hashInfo
 }
 
-func (t *Tree) Insert(datas [][]byte) {
+func (t *Tree) Insert(datas [][]byte) error {
 	t.data = append(t.data, datas...)
-	t.leaves = t.makeLeaves()
-	t.build(t.leaves)
+
+	leaves, err := t.makeLeaves()
+	if err != nil {
+		return fmt.Errorf("merkle tree insert error: %s", err)
+	}
+
+	t.leaves = leaves
+
+	if err := t.build(t.leaves); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (t *Tree) AuditProof(leafHash string) []AuditNode {
+func (t *Tree) AuditProof(leafHash string) ([]AuditNode, error) {
 	auditTrail := make([]AuditNode, 0, 4)
 
 	if leaf := t.findLeaf(leafHash); leaf != nil {
 		if leaf.parent == nil {
-			panic("Expected leaf to have a parent.")
+			return nil, fmt.Errorf("expected leaf to have a parent")
 		}
 		parent := leaf.parent
-		t.buildAuditTrail(&auditTrail, parent, leaf)
+		if err := t.buildAuditTrail(&auditTrail, parent, leaf); err != nil {
+			return nil, err
+		}
 	}
 
-	return auditTrail
+	return auditTrail, nil
 }
 
-func (t *Tree) buildAuditTrail(auditTrail *[]AuditNode, parent *node, child *node) {
-	if parent != nil {
+func (t *Tree) buildAuditTrail(auditTrail *[]AuditNode, parent *node, child *node) error {
+	if parent == nil {
 		if !parent.equals(child.parent) {
-			panic("Parent of child is not expected parent.")
+			return fmt.Errorf("parent of child is not expected parent")
 		}
 
 		var nextChild *node
@@ -129,6 +146,8 @@ func (t *Tree) buildAuditTrail(auditTrail *[]AuditNode, parent *node, child *nod
 
 		t.buildAuditTrail(auditTrail, child.parent.parent, child.parent)
 	}
+
+	return nil
 }
 
 func (t *Tree) findLeaf(hash string) *node {
@@ -140,7 +159,7 @@ func (t *Tree) findLeaf(hash string) *node {
 	return nil
 }
 
-func (t *Tree) build(nodes []*node) {
+func (t *Tree) build(nodes []*node) error {
 	if len(nodes) == 1 {
 		t.root = nodes[0]
 	} else {
@@ -156,17 +175,26 @@ func (t *Tree) build(nodes []*node) {
 				right = nil
 			}
 
-			parent = t.makeNode(nodes[i], right)
+			n, err := t.makeNode(nodes[i], right)
+			if err != nil {
+				return err
+			}
+
+			parent = n
 			parents = append(parents, parent)
 		}
 
-		t.build(parents)
+		if err := t.build(parents); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
-func (t *Tree) VerifyAudit(auditTrail []AuditNode, leafHash string) bool {
+func (t *Tree) VerifyAudit(auditTrail []AuditNode, leafHash string) (bool, error) {
 	if len(auditTrail) == 0 {
-		panic("Audit trail cannot be empty.")
+		return false, fmt.Errorf("audit trail cannot be empty")
 	}
 
 	testHash := leafHash
@@ -180,5 +208,5 @@ func (t *Tree) VerifyAudit(auditTrail []AuditNode, leafHash string) bool {
 		}
 	}
 
-	return t.root.hashInfo == testHash
+	return t.root.hashInfo == testHash, nil
 }

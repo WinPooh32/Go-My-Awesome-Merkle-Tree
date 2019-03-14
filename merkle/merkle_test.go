@@ -3,6 +3,7 @@ package merkle
 import (
 	"crypto/md5"
 	"fmt"
+	"runtime/debug"
 	"testing"
 )
 
@@ -20,15 +21,30 @@ func md5Wrap(data []byte) string {
 	return fmt.Sprintf("%X", sum)
 }
 
+func checkErr(e error, t *testing.T) {
+	if e != nil {
+		t.Fatal(e, string(debug.Stack()))
+	}
+}
+
 func makeTestTree() *Tree {
 	tree := MakeTree(md5Wrap)
 	return tree
 }
 
-func makeTestLeaf(testData []byte) (*Tree, *node) {
+func makeTestLeaf(testData []byte, t *testing.T) (*Tree, *node) {
 	tree := makeTestTree()
-	n := tree.makeLeafNode(testData)
+	n, err := tree.makeLeafNode(testData)
+	checkErr(err, t)
 	return tree, n
+}
+
+func TestMakeNilLeaf(t *testing.T) {
+	tree := makeTestTree()
+	_, err := tree.makeLeafNode(nil)
+	if err == nil {
+		t.Fatal("tree was successfully created with nil data array")
+	}
 }
 
 func TestMakeTree(t *testing.T) {
@@ -85,7 +101,7 @@ func TestMakeLeafNode(t *testing.T) {
 	}
 
 	for _, v := range cases {
-		tree, n := makeTestLeaf(v)
+		tree, n := makeTestLeaf(v, t)
 
 		if tree == nil {
 			t.Fatal()
@@ -111,13 +127,15 @@ func TestMakeLeafNode(t *testing.T) {
 			t.Fatal()
 		}
 	}
-
-	assertPanic(t, "nil data", func() { makeTestLeaf(nil) })
 }
 
 func TestIsLeaf(t *testing.T) {
 	tree := makeTestTree()
-	n := tree.makeLeafNode([]byte{})
+	n, err := tree.makeLeafNode([]byte{})
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if !n.isLeaf() {
 		t.Fatal()
@@ -126,9 +144,12 @@ func TestIsLeaf(t *testing.T) {
 
 func leafEqualsCases(t *testing.T) {
 	tree := makeTestTree()
-	n1 := tree.makeLeafNode([]byte{1, 2, 3})
-	n2 := tree.makeLeafNode([]byte{})
-	n3 := tree.makeLeafNode([]byte{1, 2, 3})
+	n1, err := tree.makeLeafNode([]byte{1, 2, 3})
+	checkErr(err, t)
+	n2, err := tree.makeLeafNode([]byte{})
+	checkErr(err, t)
+	n3, err := tree.makeLeafNode([]byte{1, 2, 3})
+	checkErr(err, t)
 
 	if !n1.equals(n1) {
 		t.Fatal()
@@ -162,7 +183,8 @@ func TestMakeLeaves(t *testing.T) {
 
 	func() {
 		tree := makeTestTree()
-		leaves := tree.makeLeaves()
+		leaves, err := tree.makeLeaves()
+		checkErr(err, t)
 		testLeaves(leaves, [][]byte{})
 	}()
 
@@ -176,7 +198,8 @@ func TestMakeLeaves(t *testing.T) {
 	for _, v := range cases {
 		tree := makeTestTree()
 		tree.data = v
-		leaves := tree.makeLeaves()
+		leaves, err := tree.makeLeaves()
+		checkErr(err, t)
 		testLeaves(leaves, v)
 	}
 }
