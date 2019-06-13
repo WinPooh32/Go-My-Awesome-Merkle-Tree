@@ -124,7 +124,7 @@ func (t *Tree) AuditProof(leafHash string) ([]AuditNode, error) {
 }
 
 func (t *Tree) buildAuditTrail(auditTrail *[]AuditNode, parent *node, child *node) error {
-	if parent == nil {
+	if parent != nil {
 		if !parent.equals(child.parent) {
 			return fmt.Errorf("parent of child is not expected parent")
 		}
