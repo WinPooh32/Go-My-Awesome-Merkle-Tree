@@ -64,7 +64,7 @@ func (t *Tree) makeNode(left, right *node) (*node, error) {
 	return &n, nil
 }
 
-func (t *Tree) print(root *node, indent int, line string) {
+func (t *Tree) print(root *node, indent int, line string) (out string) {
 	if root == nil {
 		return
 	}
@@ -77,13 +77,17 @@ func (t *Tree) print(root *node, indent int, line string) {
 
 	format := "%" + strconv.Itoa((len(root.hashInfo)+len(line))*indent+len(leafData)) + "s\n"
 
-	t.print(root.left, indent+1, "/")
-	fmt.Printf(format, line+root.hashInfo+leafData)
-	t.print(root.right, indent+1, "\\")
+	out = fmt.Sprint(
+		t.print(root.left, indent+1, "/"),
+		fmt.Sprintf(format, line+root.hashInfo+leafData),
+		t.print(root.right, indent+1, "\\"),
+	)
+
+	return
 }
 
-func (t *Tree) Print() {
-	t.print(t.root, 1, "")
+func (t *Tree) String() string {
+	return t.print(t.root, 1, "")
 }
 
 func (t *Tree) Hash() string {
